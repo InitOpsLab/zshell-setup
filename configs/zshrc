@@ -1,15 +1,18 @@
+# ~/.zshrc
+
 # === Zinit Bootstrapping ===
 if [[ ! -f ~/.zinit/bin/zinit.zsh ]]; then
-  echo "Installing Zinit plugin manager..."
+  echo "[INFO] Installing Zinit plugin manager..."
   mkdir -p ~/.zinit
   git clone https://github.com/zdharma-continuum/zinit ~/.zinit/bin
 fi
 source ~/.zinit/bin/zinit.zsh
 
 # === Source Config Sections ===
-[[ -f ~/.zsh/plugins.zsh ]] && source ~/.zsh/plugins.zsh
-[[ -f ~/.zsh/aliases.zsh ]] && source ~/.zsh/aliases.zsh
+[[ -f ~/.zsh/plugins.zsh ]]   && source ~/.zsh/plugins.zsh
+[[ -f ~/.zsh/aliases.zsh ]]   && source ~/.zsh/aliases.zsh
 [[ -f ~/.zsh/functions.zsh ]] && source ~/.zsh/functions.zsh
+[[ -f ~/.zsh/go.zsh ]]        && source ~/.zsh/go.zsh
 
 # === Completion Cache / Setup ===
 zinit ice atinit"mkdir -p ~/.cache/zinit/completions"
@@ -23,9 +26,9 @@ setopt inc_append_history share_history
 # === Word Motion Bindings ===
 bindkey "^[[1;3C" forward-word
 bindkey "^[[1;3D" backward-word
-bindkey "^[f" forward-word
-bindkey "^[b" backward-word
-bindkey "^[^?" backward-kill-word
+bindkey "^[f"       forward-word
+bindkey "^[b"       backward-word
+bindkey "^[^?"      backward-kill-word
 autoload -U select-word-style
 select-word-style bash
 

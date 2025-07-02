@@ -54,7 +54,7 @@ install_dependencies() {
   if [[ "$OS" == "macOS" ]]; then
     brew update || log_warn "brew update failed"
 
-    for pkg in zsh git fzf coreutils gnu-sed gnupg gawk fd ripgrep bat eza pyenv neovim terraform awscli gh tfenv cookiecutter tgenv; do
+    for pkg in zsh git fzf coreutils gnu-sed gnupg gawk fd ripgrep bat eza pyenv neovim terraform awscli go gh tfenv cookiecutter tgenv; do
       install_if_missing "$pkg"
     done
 
@@ -62,7 +62,6 @@ install_dependencies() {
       log_info "Installing Terraform 1.3.7 via tfenv..."
       tfenv install 1.3.7 || log_warn "tfenv failed to install Terraform"
     fi
-
     tfenv use 1.3.7 || log_warn "Failed to activate Terraform 1.3.7 — check tfenv configuration."
 
     if [[ ! -f "$TG_BIN" ]]; then
@@ -71,7 +70,6 @@ install_dependencies() {
     else
       log_info "Terragrunt $TG_VERSION already installed at $TG_BIN"
     fi
-
     chmod +x "$TG_BIN" || log_warn "Could not chmod $TG_BIN"
     xattr -d com.apple.quarantine "$TG_BIN" 2>/dev/null || log_warn "Quarantine attribute may still exist"
 
@@ -112,7 +110,6 @@ copy_zsh_configs() {
   log_info "Copying custom Zsh configs to ~/.zsh..."
   mkdir -p "$ZSH_TARGET_DIR"
   cp -Rn "$ZSH_CUSTOM_DIR/"* "$ZSH_TARGET_DIR/" || log_warn "Failed to copy custom Zsh configs"
-
   mkdir -p "$ZSH_TARGET_DIR/functions"
 }
 
@@ -133,6 +130,39 @@ validate_plugins() {
 }
 
 # ──────────────────────────────────────────────────────────────────────
+setup_go() {
+  if ! command -v go &>/dev/null; then
+    log_warn "Go not found; skipping Go configuration."
+    return
+  fi
+
+  log_info "Configuring Go environment and Zsh completions…"
+
+  # Generate zsh completion for Go
+  mkdir -p "$HOME/.zsh/completion"
+  go completion zsh > "$HOME/.zsh/completion/_go"
+
+  # Append Go env-vars & completion setup to ~/.zshrc if missing
+  if ! grep -q '## Go environment' "$HOME/.zshrc"; then
+    cat << 'EOF' >> "$HOME/.zshrc"
+
+## Go environment
+export GOPATH="$HOME/go"
+export GOBIN="$GOPATH/bin"
+# ensure Go binaries are on your PATH
+export PATH="$PATH:$(go env GOROOT)/bin:$GOBIN"
+
+# support Go autocompletion
+fpath=(~/.zsh/completion $fpath)
+autoload -Uz compinit && compinit
+EOF
+    log_info "Appended Go env and completion setup to ~/.zshrc"
+  else
+    log_info "Go env already present in ~/.zshrc"
+  fi
+}
+
+# ──────────────────────────────────────────────────────────────────────
 wrap_up() {
   log_info "✅ Zsh setup complete."
   echo -e "${YELLOW}➡️  Restart your terminal or run \`exec zsh\` to start using your new shell.${RESET}"
@@ -146,4 +176,5 @@ install_zinit
 copy_zsh_configs
 setup_powerlevel10k
 validate_plugins
+setup_go
 wrap_up
