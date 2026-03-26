@@ -12,6 +12,24 @@ log_info()  { echo -e "${GREEN}[INFO]${RESET} $1"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${RESET} $1"; }
 log_error() { echo -e "${RED}[ERROR]${RESET} $1"; exit 1; }
 
+ask_yes_no() {
+  local prompt="$1"
+  local default="${2:-n}"
+  local yn_hint="[y/N]"
+  [[ "$default" == "y" ]] && yn_hint="[Y/n]"
+
+  while true; do
+    echo -n -e "${GREEN}[?]${RESET} ${prompt} ${yn_hint} "
+    read -r answer
+    answer="${answer:-$default}"
+    case "$(echo "$answer" | tr '[:upper:]' '[:lower:]')" in
+      y|yes) return 0 ;;
+      n|no)  return 1 ;;
+      *)     echo "Please answer y or n." ;;
+    esac
+  done
+}
+
 # ──────────────────────────────────────────────────────────────────────
 # Paths
 CONFIGS_DIR="$(pwd)/configs"
@@ -117,6 +135,19 @@ copy_zsh_configs() {
 }
 
 # ──────────────────────────────────────────────────────────────────────
+configure_subscription_plugins() {
+  log_info "Subscription plugins are off by default. Enable them if you have the required subscription."
+  echo ""
+
+  if ask_yes_no "Enable GitHub Copilot CLI shortcuts? (requires GitHub Copilot subscription)"; then
+    log_info "Copilot CLI shortcuts enabled."
+  else
+    rm -f "$ZSH_TARGET_DIR/copilot.zsh"
+    log_info "Copilot CLI shortcuts disabled (remove ~/.zsh/copilot.zsh to disable later)."
+  fi
+}
+
+# ──────────────────────────────────────────────────────────────────────
 setup_powerlevel10k() {
   if [[ ! -f ~/.p10k.zsh ]]; then
     log_info "Installing Powerlevel10k default theme config..."
@@ -144,6 +175,7 @@ detect_os
 install_dependencies
 install_zinit
 copy_zsh_configs
+configure_subscription_plugins
 setup_powerlevel10k
 validate_plugins
 wrap_up
