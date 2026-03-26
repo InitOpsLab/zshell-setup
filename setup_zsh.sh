@@ -132,6 +132,19 @@ copy_zsh_configs() {
   cp -Rn "$ZSH_CUSTOM_DIR/"* "$ZSH_TARGET_DIR/" || log_warn "Failed to copy custom Zsh configs"
 
   mkdir -p "$ZSH_TARGET_DIR/functions"
+
+  log_info "Installing scripts to ~/.local/bin..."
+  mkdir -p "$HOME/.local/bin"
+  for script in "$CONFIGS_DIR/scripts/"*; do
+    local dest="$HOME/.local/bin/$(basename "$script")"
+    if [[ ! -f "$dest" ]]; then
+      cp "$script" "$dest"
+      chmod +x "$dest"
+      log_info "Installed $(basename "$script")"
+    else
+      log_info "$(basename "$script") already exists, skipping."
+    fi
+  done
 }
 
 # ──────────────────────────────────────────────────────────────────────
