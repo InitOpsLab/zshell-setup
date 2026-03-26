@@ -48,7 +48,11 @@ Commands:
   <point> [point...]   Open one or more warp points in VS Code
   ls|list              List warp points
   add <point>          Add current directory as a warp point
+  addcd <path> [point] Add a specific path as a warp point
   rm  <point>          Remove a warp point
+  show [point]         Print path to warp point (or matches for cwd)
+  path <point>         Print path to warp point
+  open <point>         Open warp point in file explorer
   clean                Remove points pointing to non-existent dirs
   help, -h             Show this help
 
@@ -57,6 +61,9 @@ Examples:
   wde api helm-charts deploy-service
   wde ls
   wde add docs
+  wde addcd ~/Projects/foo bar
+  wde show api
+  wde open api
 EOF
       ;;
     ls|list)
@@ -66,6 +73,48 @@ EOF
       [[ -z "$2" ]] && { echo "wde add: missing name"; return 1; }
       printf '%s:%s\n' "$2" "$PWD" >> "$rc"
       echo "Added warp point '$2' -> $PWD"
+      ;;
+    addcd)
+      [[ -z "$2" ]] && { echo "wde addcd: missing path"; return 1; }
+      local add_path
+      add_path="$(cd "$2" 2>/dev/null && pwd)" || { echo "wde addcd: invalid path '$2'"; return 1; }
+      local add_name="${3:-$(basename "$add_path")}"
+      printf '%s:%s\n' "$add_name" "$add_path" >> "$rc"
+      echo "Added warp point '$add_name' -> $add_path"
+      ;;
+    show)
+      if [[ -n "$2" ]]; then
+        local show_dir
+        show_dir="$(_wde_lookup "$2")"
+        [[ -n "$show_dir" ]] && echo "$show_dir" || { echo "wde: unknown warp point '$2'"; return 1; }
+      else
+        local line k v
+        while IFS= read -r line || [[ -n "$line" ]]; do
+          line="${line%%$'\r'}"
+          [[ -z "$line" || "$line" = \#* || "$line" != *:* ]] && continue
+          k="${line%%:*}"; v="${line#*:}"
+          k="${k#"${k%%[![:space:]]*}"}"; k="${k%"${k##*[![:space:]]}"}"
+          v="${v#"${v%%[![:space:]]*}"}"; v="${v%"${v##*[![:space:]]}"}"
+          [[ "$(_wde_expand_tilde "$v")" == "$PWD" ]] && echo "$k"
+        done < "$rc"
+      fi
+      ;;
+    path)
+      [[ -z "$2" ]] && { echo "wde path: missing name"; return 1; }
+      local path_dir
+      path_dir="$(_wde_lookup "$2")"
+      [[ -n "$path_dir" ]] && echo "$path_dir" || { echo "wde: unknown warp point '$2'"; return 1; }
+      ;;
+    open)
+      [[ -z "$2" ]] && { echo "wde open: missing name"; return 1; }
+      local open_dir
+      open_dir="$(_wde_lookup "$2")"
+      [[ -z "$open_dir" ]] && { echo "wde: unknown warp point '$2'"; return 1; }
+      if [[ "$OSTYPE" == darwin* ]]; then
+        open "$open_dir"
+      else
+        xdg-open "$open_dir"
+      fi
       ;;
     rm)
       [[ -z "$2" ]] && { echo "wde rm: missing name"; return 1; }
@@ -136,7 +185,7 @@ _wde__marks_arr() {
 _wde() {
   local -a marks subcmds already_used
   marks=(${(f)"$(_wde__marks_arr)"})
-  subcmds=(ls list add rm clean help)
+  subcmds=(ls list add addcd rm show path open clean help)
 
   if (( CURRENT == 2 )); then
     compadd -a subcmds
@@ -154,7 +203,7 @@ _wde() {
   fi
 }
 
-_wde_compctl_all() { reply=(ls list add rm clean help ${(f)"$(_wde__marks_arr)"}); }
+_wde_compctl_all() { reply=(ls list add addcd rm show path open clean help ${(f)"$(_wde__marks_arr)"}); }
 
 if (( $+functions[compdef] )); then
   compdef _wde wde
